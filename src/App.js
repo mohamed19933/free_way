@@ -10,25 +10,49 @@ export default function App() {
 
   // Function to toggle packed status of an item
   const togglePacked = (itemId) => {
-    const updatedItems = items.map((item) => {
-      if (item.id === itemId) {
-        return { ...item, packed: !item.packed };
-      }
-      return item;
-    });
-    setItems((s) => (s = updatedItems));
+    const updatedItems = items.map((item) =>
+      item.id === itemId ? { ...item, packed: !item.packed } : item
+    );
+    setItems(updatedItems);
   };
 
   // Function to remove item from the list
   const clearSelect = (itemId) => {
     const updatedItems = items.filter((item) => item.id !== itemId);
-    setItems((s) => (s = updatedItems));
+    setItems(updatedItems);
   };
 
   // Function to add a new item to the list
   const handleAddItem = (newItem) => {
     const updatedItems = [...items, newItem];
-    setItems((s) => (s = updatedItems));
+    setItems(updatedItems);
+  };
+
+  const orderInputs = (selectedValue) => {
+    let updatedItems = [...items];
+
+    switch (selectedValue) {
+      case "description":
+        updatedItems.sort((a, b) => a.description.localeCompare(b.description));
+        break;
+      case "packed":
+        updatedItems.sort((a, b) =>
+          a.packed === b.packed ? 0 : a.packed ? 1 : -1
+        );
+        break;
+      case "input":
+        updatedItems.sort((a, b) => a.id - b.id);
+        break;
+      default:
+        // Keep the items in their original input order
+        break;
+    }
+
+    setItems(updatedItems);
+  };
+
+  const clearList = () => {
+    setItems([]); // Clear all items
   };
 
   return (
@@ -39,6 +63,8 @@ export default function App() {
         items={items}
         togglePacked={togglePacked}
         clearSelect={clearSelect}
+        orderInputs={orderInputs}
+        clearList={clearList}
       />
       <Stats items={items} />
     </div>
@@ -54,11 +80,11 @@ function Form({ itemLength, handleAddItem }) {
   const [description, setDescription] = useState("");
 
   const handleQuantityChange = (event) => {
-    setQuantity((s) => (s = parseInt(event.target.value))); // Convert to integer
+    setQuantity(parseInt(event.target.value)); // Convert to integer
   };
 
   const handleDescriptionChange = (event) => {
-    setDescription((s) => (s = event.target.value));
+    setDescription(event.target.value);
   };
 
   const handleSubmit = (event) => {
@@ -77,8 +103,8 @@ function Form({ itemLength, handleAddItem }) {
     handleAddItem(newItem);
 
     // Clear the form fields after adding
-    setQuantity((s) => (s = 1));
-    setDescription((s) => (s = ""));
+    setQuantity(1);
+    setDescription("");
   };
 
   // Generate options from 1 to 100
@@ -108,7 +134,21 @@ function Form({ itemLength, handleAddItem }) {
   );
 }
 
-function PackingList({ items, togglePacked, clearSelect }) {
+function PackingList({
+  items,
+  togglePacked,
+  clearSelect,
+  orderInputs,
+  clearList,
+}) {
+  const [sortby, setSortby] = useState("input");
+
+  const reorder = (event) => {
+    const selectedValue = event.target.value;
+    setSortby(selectedValue); // Update the state
+    orderInputs(selectedValue); // Call orderInputs with the selected value
+  };
+
   return (
     <div className="list">
       <ul style={{ overflow: "hidden" }}>
@@ -121,6 +161,15 @@ function PackingList({ items, togglePacked, clearSelect }) {
           />
         ))}
       </ul>
+
+      <div className="actions">
+        <select value={sortby} onChange={reorder}>
+          <option value="input">Sort by the input order</option>
+          <option value="description">Sort by the description order</option>
+          <option value="packed">Sort by the packed Status</option>
+        </select>
+        <button onClick={clearList}>Clear</button>
+      </div>
     </div>
   );
 }
@@ -142,6 +191,13 @@ function Item({ item, togglePacked, clearSelect }) {
 }
 
 function Stats({ items }) {
+  if (!items.length) {
+    return (
+      <p className="stats">
+        <em>Start adding some Items to your Packing List 📦</em>
+      </p>
+    );
+  }
   // Calculate total items and packed items
   const totalItems = items.length;
   const packedItems = items.filter((item) => item.packed).length;
@@ -149,8 +205,15 @@ function Stats({ items }) {
   return (
     <footer className="stats">
       <em>
-        You have {totalItems} items on your list and you already packed{" "}
-        {packedItems}
+        {packedItems === totalItems ? (
+          <span>You Are Ready to Travel ✈</span>
+        ) : (
+          `${totalItems} items on your list and you already packed ${packedItems} ${
+            totalItems > 0
+              ? `(${((packedItems / totalItems) * 100).toFixed(2)}%)`
+              : ""
+          }`
+        )}
       </em>
     </footer>
   );
